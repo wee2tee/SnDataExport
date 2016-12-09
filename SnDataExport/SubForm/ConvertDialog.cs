@@ -31,9 +31,12 @@ namespace SnDataExport.SubForm
         private const string TABTYP_HOWKNOW = "03";
         private const string TABTYP_BUSITYP = "04";
         private const string TABTYP_PROBCOD = "05";
-
         public const string TABTYP_AREA = "06";
         public const string TABTYP_VEREXT = "07";
+
+        //private int record_count;
+        private int last_converted_record = 0;
+        private int error_record_count = 0;
 
         private int admin_id;
 
@@ -65,7 +68,26 @@ namespace SnDataExport.SubForm
 
         private void btnStart_Click(object sender, EventArgs e)
         {
-            if (MessageBox.Show("เริ่มทำการแปลงข้อมูลเข้าสู่ MySql", "", MessageBoxButtons.OKCancel) == DialogResult.OK)
+            DialogResult confirm_result = DialogResult.Cancel;
+            if(File.Exists(AppDomain.CurrentDomain.BaseDirectory + this.toTableName + ".txt"))
+            {
+                int last_converted_record = 0;
+                Int32.TryParse(File.ReadAllText(AppDomain.CurrentDomain.BaseDirectory + this.toTableName + ".txt"), out last_converted_record);
+                ConfirmDialog confirm = new ConfirmDialog(last_converted_record);
+                confirm_result = confirm.ShowDialog();
+                if(confirm_result == DialogResult.Retry)
+                {
+                    this.last_converted_record = last_converted_record;
+                }
+            }
+            else
+            {
+                confirm_result = MessageBox.Show("เริ่มทำการแปลงข้อมูลเข้าสู่ MySql", "", MessageBoxButtons.OKCancel);
+            }
+
+            Console.WriteLine(" .. >> " + confirm_result.ToString());
+
+            if (confirm_result == DialogResult.OK || confirm_result == DialogResult.Retry)
             {
                 this.btnStart.Enabled = false;
 
@@ -87,56 +109,107 @@ namespace SnDataExport.SubForm
                     this.verext_list = db.istab.Where(istab => istab.tabtyp == TABTYP_VEREXT).ToList();
                 }
 
-                this.KeepLog("Start convert from " + this.main_form.dbfFileName + " to \"" + this.main_form.conn.Database + "." + this.toTableName + "\" at : " + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("en-US")) + Environment.NewLine);
+                this.KeepLog("Start convert from " + this.main_form.dbfFileName + " record # " + this.last_converted_record.ToString() + " to \"" + this.main_form.conn.Database + "." + this.toTableName + "\" at : " + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("en-US")) + Environment.NewLine);
 
                 this.worker.DoWork += delegate(object obj, DoWorkEventArgs ev)
                 {
                     this.main_form.conn.Open();
 
-                    int i = 0;
-                    foreach (DataRow row in this.main_form.dbf_data_table.Rows)
+                    //record_count = 0;
+                    //foreach (DataRow row in this.main_form.dbf_data_table.Rows)
+                    //{
+                    //    record_count++;
+                    //    if (record_count <= this.last_converted_record)
+                    //        continue;
+
+                    //    if (this.toTableName.ToLower() == "serial")
+                    //    {
+                    //        this.RecSerial(row);
+                    //        this.worker.ReportProgress(record_count);
+                    //    }
+                    //    if (this.toTableName.ToLower() == "problem")
+                    //    {
+                    //        this.RecProblem(row);
+                    //        this.worker.ReportProgress(record_count);
+                    //    }
+                    //    if (this.toTableName.ToLower() == "dealer")
+                    //    {
+                    //        this.RecDealer(row);
+                    //        this.worker.ReportProgress(record_count);
+                    //    }
+                    //    if (this.toTableName.ToLower() == "d_msg")
+                    //    {
+                    //        this.RecDmsg(row);
+                    //        this.worker.ReportProgress(record_count);
+                    //    }
+                    //    if (this.toTableName.ToLower() == "istab")
+                    //    {
+                    //        this.RecIstab(row);
+                    //        this.worker.ReportProgress(record_count);
+                    //    }
+                    //    if (this.toTableName.ToLower() == "istab[tabtyp = '" + TABTYP_AREA + "']")
+                    //    {
+                    //        this.RecIstabArea(row);
+                    //        this.worker.ReportProgress(record_count);
+                    //    }
+                    //    if (this.toTableName.ToLower() == "istab[tabtyp = '" + TABTYP_VEREXT + "']")
+                    //    {
+                    //        this.RecIstabVerext(row);
+                    //        this.worker.ReportProgress(record_count);
+                    //    }
+                    //    if (this.worker.CancellationPending)
+                    //    {
+                    //        ev.Cancel = true;
+                    //        return;
+                    //    }
+                    //}
+
+                    for (int i = this.last_converted_record; i < this.main_form.dbf_data_table.Rows.Count; i++)
                     {
-                        i++;
+                        this.last_converted_record++;
+                        var row = this.main_form.dbf_data_table.Rows[i];
+
                         if (this.toTableName.ToLower() == "serial")
                         {
                             this.RecSerial(row);
-                            this.worker.ReportProgress(i);
+                            this.worker.ReportProgress(i + 1);
                         }
                         if (this.toTableName.ToLower() == "problem")
                         {
                             this.RecProblem(row);
-                            this.worker.ReportProgress(i);
+                            this.worker.ReportProgress(i + 1);
                         }
                         if (this.toTableName.ToLower() == "dealer")
                         {
                             this.RecDealer(row);
-                            this.worker.ReportProgress(i);
+                            this.worker.ReportProgress(i + 1);
                         }
                         if (this.toTableName.ToLower() == "d_msg")
                         {
                             this.RecDmsg(row);
-                            this.worker.ReportProgress(i);
+                            this.worker.ReportProgress(i + 1);
                         }
                         if (this.toTableName.ToLower() == "istab")
                         {
                             this.RecIstab(row);
-                            this.worker.ReportProgress(i);
+                            this.worker.ReportProgress(i + 1);
                         }
                         if (this.toTableName.ToLower() == "istab[tabtyp = '" + TABTYP_AREA + "']")
                         {
                             this.RecIstabArea(row);
-                            this.worker.ReportProgress(i);
+                            this.worker.ReportProgress(i + 1);
                         }
                         if (this.toTableName.ToLower() == "istab[tabtyp = '" + TABTYP_VEREXT + "']")
                         {
                             this.RecIstabVerext(row);
-                            this.worker.ReportProgress(i);
+                            this.worker.ReportProgress(i + 1);
                         }
                         if (this.worker.CancellationPending)
                         {
                             ev.Cancel = true;
                             return;
                         }
+                        //this.last_converted_record++;
                     }
                 };
 
@@ -157,6 +230,7 @@ namespace SnDataExport.SubForm
                     else
                     {
                         this.KeepLog("Stop convert by user at : " + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("en-US")) + Environment.NewLine + Environment.NewLine);
+                        this.KeepConvertProgress(this.toTableName + ".txt", this.last_converted_record);
                         MessageBox.Show("หยุดการทำงานแล้ว");
                         this.DialogResult = DialogResult.Abort;
                     }
@@ -306,7 +380,7 @@ namespace SnDataExport.SubForm
                 }
                 catch (Exception ex)
                 {
-                    this.KeepLog("\t" + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("en-US")) + "\t" + ((string)row[0]).Trim() + "\n\t\t" + ex.Message + Environment.NewLine);
+                    this.KeepErrorLog(((string)row[0]).Trim() + "\n\t\t" + ex.Message);
                     return;
                 }
             }
@@ -338,7 +412,7 @@ namespace SnDataExport.SubForm
                     var serial = this.serial_id_list.Where(d => d.sernum == ((string)row[0]).Trim()).FirstOrDefault();
                     if (serial == null)
                     {
-                        this.KeepLog("\t" + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("en-US")) + "\t" + ((string)row[0]).Trim() + "\n\t\tSerial number not found." + Environment.NewLine);
+                        this.KeepErrorLog(((string)row[0]).Trim() + "\n\t\tSerial number not found.");
                         return;
                     }
 
@@ -365,7 +439,7 @@ namespace SnDataExport.SubForm
                 }
                 catch (Exception ex)
                 {
-                    this.KeepLog("\t" + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("en-US")) + "\t" + ((string)row[0]).Trim() + "\n\t\t" + ex.Message + Environment.NewLine);
+                    this.KeepErrorLog(((string)row[0]).Trim() + "\n\t\t" + ex.Message);
                     return;
                 }
             }
@@ -401,7 +475,7 @@ namespace SnDataExport.SubForm
                 }
                 catch (Exception ex)
                 {
-                    this.KeepLog("\t" + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("en-US")) + "\t" + ((string)row[0]).Trim() + "\n\t\t" + ex.Message + Environment.NewLine);
+                    this.KeepErrorLog(((string)row[0]).Trim() + "\n\t\t" + ex.Message);
                     return;
                 }
             }
@@ -430,7 +504,7 @@ namespace SnDataExport.SubForm
                     var dealer = this.dealer_id_list.Where(d => d.dealercode == ((string)row[0]).Trim()).FirstOrDefault();
                     if(dealer == null)
                     {
-                        this.KeepLog("\t" + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("en-US")) + "\t" + ((string)row[0]).Trim() + "\n\t\tDealer_Code not found." + Environment.NewLine);
+                        this.KeepErrorLog(((string)row[0]).Trim() + "\n\t\tDealer_Code not found.");
                         return;
                     }
 
@@ -448,7 +522,7 @@ namespace SnDataExport.SubForm
                 }
                 catch (Exception ex)
                 {
-                    this.KeepLog("\t" + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("en-US")) + "\t" + ((string)row[0]).Trim() + "\n\t\t" + ex.Message + Environment.NewLine);
+                    this.KeepErrorLog(((string)row[0]).Trim() + "\n\t\t" + ex.Message);
                     return;
                 }
             }
@@ -489,7 +563,7 @@ namespace SnDataExport.SubForm
                 }
                 catch (Exception ex)
                 {
-                    this.KeepLog("\t" + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("en-US")) + "\t" + ((string)row[0]).Trim() + "\n\t\t" + ex.Message + Environment.NewLine);
+                    this.KeepErrorLog(((string)row[0]).Trim() + "\n\t\t" + ex.Message);
                     return;
                 }
             }
@@ -518,7 +592,7 @@ namespace SnDataExport.SubForm
                 }
                 catch (Exception ex)
                 {
-                    this.KeepLog("\t" + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("en-US")) + "\t" + ((string)row["area"]).Trim() + "\n\t\t" + ex.Message + Environment.NewLine);
+                    this.KeepErrorLog(((string)row["area"]).Trim() + "\n\t\t" + ex.Message);
                     return;
                 }
             }
@@ -547,7 +621,7 @@ namespace SnDataExport.SubForm
                 }
                 catch (Exception ex)
                 {
-                    this.KeepLog("\t" + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("en-US")) + "\t" + ((string)row["verext"]).Trim() + "\n\t\t" + ex.Message + Environment.NewLine);
+                    this.KeepErrorLog(((string)row["verext"]).Trim() + "\n\t\t" + ex.Message);
                     return;
                 }
             }
@@ -558,12 +632,28 @@ namespace SnDataExport.SubForm
 
         }
 
+        private void KeepErrorLog(string err_message)
+        {
+            this.KeepLog((++this.error_record_count).ToString() + "\t record # " + this.last_converted_record.ToString() + "\t" + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("en-US")) + "\t" + err_message + Environment.NewLine);
+        }
+
         private void KeepLog(string message)
         {
             using (FileStream fs = new FileStream(AppDomain.CurrentDomain.BaseDirectory + "ConvertLog.txt", FileMode.Append, FileAccess.Write))
             {
                 byte[] data = new UTF8Encoding(true).GetBytes(message);
                 fs.Write(data, 0, data.Length);
+                fs.Close();
+            }
+        }
+        
+        private void KeepConvertProgress(string file_name,int record_count)
+        {
+            using(FileStream fs = new FileStream(AppDomain.CurrentDomain.BaseDirectory + file_name, FileMode.Create, FileAccess.Write))
+            {
+                byte[] data = Encoding.UTF8.GetBytes(record_count.ToString());
+                fs.Write(data, 0, data.Length);
+                fs.Close();
             }
         }
     }
